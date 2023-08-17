@@ -1,6 +1,9 @@
 #include <iostream>
+#include "Server.h"
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
-    return 0;
+    std::cout << "Initializing server..." << std::endl;
+    auto server = Server();
+    server.setup_listening_fd();
+    server.start_event_loop();
 }

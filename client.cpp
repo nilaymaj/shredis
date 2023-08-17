@@ -50,25 +50,20 @@ int main() {
         exit(1);
     }
 
-    std::string s = "hello";
-    write_query(fd, s);
+    write_query(fd, "hello");
     write_query(fd, "another hello");
+    write_query(fd, "another another hello");
+    write_query(fd, "hello");
+    write_query(fd, "another hello");
+    write_query(fd, "another another hello");
 
     printf("response: %s\n", read_response(fd).c_str());
     printf("response: %s\n", read_response(fd).c_str());
+    printf("response: %s\n", read_response(fd).c_str());
+    printf("response: %s\n", read_response(fd).c_str());
+    printf("response: %s\n", read_response(fd).c_str());
+    printf("response: %s\n", read_response(fd).c_str());
 
-//    char rbuf[64] = {};
-//    ssize_t n = read(fd, rbuf, sizeof(rbuf) - 1);
-//    if (n < 0) {
-//        printf("read(): %s\n", strerror(errno));
-//        exit(1);
-//    }
-//    printf("bytes read: %d\n", (int)n);
-
-
-
-//    printf("server says: %s\n", rbuf);
     close(fd);
-
     return 0;
 }
