@@ -16,6 +16,7 @@ void Connection::process() {
 void Connection::process_read() {
     while (this->try_fill_read_buffer());
     while (this->try_process_query());
+    this->clear_read_buffer_space();
     if (this->state == STATE_READ) this->state = STATE_WRITE;
 }
 
@@ -51,17 +52,17 @@ bool Connection::try_fill_read_buffer() {
 }
 
 bool Connection::try_process_query() {
-    if (this->rbuf_size < 4) return false;
+    if (this->rbuf_size - this->rbuf_processed < 4) return false;
 
     // Read query body
     uint32_t request_len = 0;
-    memcpy(&request_len, &this->rbuf[0], 4);
+    memcpy(&request_len, &this->rbuf[this->rbuf_processed], 4);
     if (request_len > k_max_msg) {
         std::cout << "request body too long (" << request_len << " bytes)" << std::endl;
         this->state = STATE_END;
         return false;
     }
-    if (this->rbuf_size < 4 + request_len) return false;
+    if (this->rbuf_size - this->rbuf_processed < 4 + request_len) return false;
 
     // If there's not enough space in write buffer, send to write flush state
     size_t wbuf_available_space = sizeof(this->wbuf) - this->wbuf_size;
@@ -72,17 +73,20 @@ bool Connection::try_process_query() {
     }
 
     // Process query and write reply to write buffer
-    printf("%d: client says: %.*s\n", this->fd, request_len, &rbuf[4]);
+    printf("%d: client says: %.*s\n", this->fd, request_len, &rbuf[this->rbuf_processed + 4]);
     memcpy(&this->wbuf[this->wbuf_size], &request_len, 4);
-    memcpy(&this->wbuf[this->wbuf_size + 4], &rbuf[4], request_len);
+    memcpy(&this->wbuf[this->wbuf_size + 4], &rbuf[this->rbuf_processed + 4], request_len);
     this->wbuf_size += 4 + request_len;
-
-    // Left-shift remaining content in read buffer
-    size_t remaining_bytes = this->rbuf_size - (4 + request_len);
-    if (remaining_bytes) memmove(this->rbuf, &this->rbuf[4 + request_len], remaining_bytes);
-    this->rbuf_size = remaining_bytes;
+    this->rbuf_processed += 4 + request_len;
 
     return true;
+}
+
+void Connection::clear_read_buffer_space() {
+    size_t remaining_bytes = sizeof(this->rbuf) - this->rbuf_processed;
+    memmove(this->rbuf, &this->rbuf[this->rbuf_processed], remaining_bytes);
+    this->rbuf_size -= this->rbuf_processed;
+    this->rbuf_processed = 0;
 }
 
 bool Connection::try_flush_write_buffer() {

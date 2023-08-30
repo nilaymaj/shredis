@@ -23,6 +23,7 @@ public:
 private:
     size_t rbuf_size = 0;
     uint8_t rbuf[4 + k_max_msg] = {};
+    size_t rbuf_processed = 0;
     size_t wbuf_size = 0;
     size_t wbuf_sent = 0;
     uint8_t wbuf[4 + k_max_msg] = {};
@@ -30,6 +31,7 @@ private:
     void process_read();
     bool try_fill_read_buffer();
     bool try_process_query();
+    void clear_read_buffer_space();
 
     void process_write();
     bool try_flush_write_buffer();
