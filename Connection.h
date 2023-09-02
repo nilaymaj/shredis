@@ -4,8 +4,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include "Cursor.h"
 
-const size_t k_max_msg = 56;
+const size_t k_max_msg = 192;
 
 enum ConnectionState {
     STATE_READ = 0,
@@ -18,9 +19,10 @@ public:
     int fd = -1;
     ConnectionState state = STATE_READ;
 
-    explicit Connection(int fd);
+    explicit Connection(int fd, DataStore& ds);
     void process();
 private:
+    Cursor cursor;
     size_t rbuf_size = 0;
     uint8_t rbuf[4 + k_max_msg] = {};
     size_t rbuf_processed = 0;

@@ -5,7 +5,7 @@
 #include <cstring>
 #include "Connection.h"
 
-Connection::Connection(int fd): fd(fd) {}
+Connection::Connection(int fd, DataStore& ds): fd(fd), cursor(ds) {}
 
 void Connection::process() {
     if (this->state == STATE_READ) this->process_read();
@@ -72,11 +72,15 @@ bool Connection::try_process_query() {
         return false;
     }
 
-    // Process query and write reply to write buffer
     printf("%d: client says: %.*s\n", this->fd, request_len, &rbuf[this->rbuf_processed + 4]);
-    memcpy(&this->wbuf[this->wbuf_size], &request_len, 4);
-    memcpy(&this->wbuf[this->wbuf_size + 4], &rbuf[this->rbuf_processed + 4], request_len);
-    this->wbuf_size += 4 + request_len;
+
+    char* request_start = (char*)&this->rbuf[this->rbuf_processed + 4];
+    auto resp = this->cursor.process_query(request_start, request_len);
+    uint32_t response_size = 4 + resp.s.length();
+    memmove(&this->wbuf[this->wbuf_size], &response_size, 4);
+    memmove(&this->wbuf[this->wbuf_size + 4], &resp.code, 4);
+    memmove(&this->wbuf[this->wbuf_size + 8], resp.s.c_str(), resp.s.length());
+    this->wbuf_size += 4 + 4 + resp.s.length();
     this->rbuf_processed += 4 + request_len;
 
     return true;

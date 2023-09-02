@@ -6,30 +6,51 @@
 #include <cstdlib>
 #include <netinet/in.h>
 #include <string>
+#include <iostream>
+
+#include <map>
+#include <string>
+
+void sanity_check() {
+    std::map<std::string, std::string> m;
+    std::string key = "abcd"; std::string value = "efgh";
+    m[key] = value;
+    std::string key2 = "abcd";
+    if (m.find(key2) == m.end()) printf("CRITICAL\n");
+    else printf("map working correctly\n");
+}
+
+typedef struct {
+    std::string s;
+    uint32_t code;
+} response;
+
+[[noreturn]] void crash(const std::string& base) {
+    std::cerr << base << ": " << strerror(errno) << std::endl;
+    std::exit(1);
+}
 
 ssize_t write_query(int fd, const std::string& query) {
-    size_t query_len = query.length() + 1;
+    size_t query_len = query.length();
     char msg_buf[4 + query_len];
     memcpy(msg_buf, &query_len, 4);
     memcpy(&msg_buf[4], query.c_str(), query_len);
     return write(fd, msg_buf, 4 + query_len);
 }
 
-std::string read_response(int fd) {
-    uint32_t resp_len;
-    if (read(fd, &resp_len, 4) < 0) {
-        printf("len: read(): %s\n", strerror(errno));
-        return "";
-    };
+void print_response(const response& resp) {
+    std::cout << "response: " << resp.code << ": " << resp.s << std::endl;
+}
 
+response read_response(int fd) {
+    uint32_t resp_len;
+    if (read(fd, &resp_len, 4) < 0) crash("len: read()");
     char resp[resp_len + 1];
-    if (read(fd, resp, resp_len) < 0) {
-        printf("body: read(): %s\n", strerror(errno));
-        return "";
-    };
+    if (read(fd, resp, resp_len) < 0) crash("body: read()");
     resp[resp_len] = '\0';
 
-    return {resp, resp_len + 1};
+    uint32_t resp_code = *((uint32_t*)resp);
+    return {.s = resp + 4, .code = resp_code};
 }
 
 int main() {
@@ -50,19 +71,19 @@ int main() {
         exit(1);
     }
 
-    write_query(fd, "hello");
-    write_query(fd, "another hello");
-    write_query(fd, "another another hello");
-    write_query(fd, "hello");
-    write_query(fd, "another hello");
-    write_query(fd, "another another hello");
+    write_query(fd, "GET somekey");
+    write_query(fd, "SET somekey somevalue");
+    write_query(fd, "GET somekey");
+    write_query(fd, "GET somekey");
+    write_query(fd, "DEL somekey");
+    write_query(fd, "GET somekey");
 
-    printf("response: %s\n", read_response(fd).c_str());
-    printf("response: %s\n", read_response(fd).c_str());
-    printf("response: %s\n", read_response(fd).c_str());
-    printf("response: %s\n", read_response(fd).c_str());
-    printf("response: %s\n", read_response(fd).c_str());
-    printf("response: %s\n", read_response(fd).c_str());
+    print_response(read_response(fd));
+    print_response(read_response(fd));
+    print_response(read_response(fd));
+    print_response(read_response(fd));
+    print_response(read_response(fd));
+    print_response(read_response(fd));
 
     close(fd);
     return 0;

@@ -5,6 +5,7 @@
 #include <vector>
 #include <sys/epoll.h>
 #include "Connection.h"
+#include "DataStore.h"
 
 class Server {
 public:
@@ -17,6 +18,7 @@ private:
     int listen_fd = -1;
     int epoll_fd = -1;
     std::vector<Connection*> fd2conn;
+    DataStore datastore;
 
     static bool fd_set_nonblock(int fd);
     void accept_client_connection();

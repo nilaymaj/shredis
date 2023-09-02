@@ -108,7 +108,7 @@ void Server::accept_client_connection() {
     };
 
     // Create Connection instance and insert into conn vector
-    auto conn = new Connection(client_fd);
+    auto conn = new Connection(client_fd, this->datastore);
     if (this->fd2conn.size() <= client_fd) this->fd2conn.resize(client_fd + 1);
     this->fd2conn[client_fd] = conn;
 
